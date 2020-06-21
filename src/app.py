@@ -106,7 +106,6 @@ app.layout = html.Div(style={'marginLeft': 200, 'marginRight': 200}, children=[
             dcc.Dropdown(
                 id='state-dropdown',
                 options=[{'label':name, 'value':name} for name in jh_data['Province/State'].unique()],
-                value = 'California',
                 style=dict(
                             width='50%',
                             verticalAlign="middle"
@@ -135,7 +134,7 @@ app.layout = html.Div(style={'marginLeft': 200, 'marginRight': 200}, children=[
 )
 def update_output_div(input_value):
 
-    data = jh_data[ jh_data[ 'Province/State'] == input_value ].copy()
+    data                        = jh_data[ jh_data[ 'Province/State'] == input_value ].copy()
     data['NewConfirmed']        = data.CumConfirmed.diff().fillna(0)
     data['NewNewConfirmedSMA7'] = data.NewConfirmed.rolling(7).mean()
 
@@ -143,7 +142,7 @@ def update_output_div(input_value):
                             x=data.date, 
                             y=data.NewConfirmed, 
                             marker_color='darkblue',
-                            name='New Confirmed')])
+                            name='New Cases')])
 
     fig.add_trace(
                 go.Scatter(
@@ -151,14 +150,21 @@ def update_output_div(input_value):
                     mode='lines', line=dict(
                         width=3, color='rgb(100,140,240)'
                     ),
-                    name='7-Day Average Trending'
+                    name='7-Day Moving Average'
                 )
     )
 
+    if input_value is None:
+        title = "COVID-19 Daily New Cases"
+    else:
+        title = "COVID-19 Daily New Cases in %s" %input_value
+
     fig.update_layout(
-            title={'text': "COVID-19 Daily New Cases in %s" %input_value},
+            title={'text': title},
             plot_bgcolor='rgb(245,245,245)',
-            showlegend=False,
+            legend=dict(
+                        x=0.02,
+                        y=0.95),
             margin=dict(l=0, r=0, b=0, t=70)
     )
     return fig
