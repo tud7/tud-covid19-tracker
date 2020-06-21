@@ -89,8 +89,8 @@ app.layout = html.Div(style={'marginLeft': 200, 'marginRight': 200}, children=[
         China, and later spread throughout the world. This project has 2 main purposes:')]),
         html.Div(style={'marginLeft': 50}, children=[
             html.Li('Collect and publish the data required to understand the COVID-19 outbreak in the United States'),
-            html.Li('For me to learn Dash, Plotly & several AWS Services')]),
-        html.P(html.I('* The data is updated daily after 8 p.m. Pacific Time'))
+            html.Li('For me to learn Dash, Plotly, Docker & several AWS Services')]),
+        html.P(html.I('Any questions or suggestions, please contact me at tduongcs [at] gmail [dot] com'))
     ]),
     html.Br(),
     html.Div([dcc.Graph(figure=fig, config={ 'displayModeBar': False })]),
@@ -171,4 +171,4 @@ def update_output_div(input_value):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(host="0.0.0.0")
