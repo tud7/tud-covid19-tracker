@@ -1,0 +1,12 @@
+version: "3.7"
+services:
+  tud-covid19-tracker:
+    build:
+      context: .
+    image: tud-covid19-tracker:$VERSION
+    container_name: tud-covid19-tracker
+    ports:
+      - "4010:8050"
+    environment:
+      - TARGET=$TARGET
+    restart: unless-stopped
