@@ -208,4 +208,4 @@ def update_output_div(input_value):
 
 
 if __name__ == '__main__':
-    app.run_server(host="0.0.0.0")
+    app.run_server(host="0.0.0.0", port=80)
