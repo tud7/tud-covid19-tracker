@@ -18,19 +18,13 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 # get data from multiple data sources
 owid_us_data = OurWorldInData().get_US_data()
-
-owid_us_data.to_csv('owid_us_data.csv')
 jh_data      = JohnHopkins().get_US_data()
-
 us_covid19_test_data = CovidTracking().get_full_data()
-us_covid19_test_data.to_csv('us_covid19_test_data.csv')
 
 # merge 2 panda data frames into 1 data frame
 merged_df = pd.merge(owid_us_data,
                  us_covid19_test_data[['date', 'totalTestResultsIncrease']],
                  on='date')
-
-merged_df.to_csv('merge_df.csv')
 
 # replace NaN with 0
 merged_df = merged_df.fillna(0)
@@ -208,4 +202,4 @@ def update_output_div(input_value):
 
 
 if __name__ == '__main__':
-    app.run_server(host="0.0.0.0", port=80)
+    app.run_server(host="0.0.0.0", port=8050)

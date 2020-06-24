@@ -6,7 +6,7 @@ services:
     image: tud-covid19-tracker:$VERSION
     container_name: tud-covid19-tracker
     ports:
-      - "4010:8050"
+      - "80:8050"
     environment:
       - TARGET=$TARGET
     restart: unless-stopped
