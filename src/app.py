@@ -33,6 +33,34 @@ merged_df = merged_df.fillna(0)
 merged_df['positive_rate']       = merged_df.apply(lambda row: (row.new_cases / row.totalTestResultsIncrease) * 100 if row.totalTestResultsIncrease else 0, axis = 1)
 merged_df['NewNewConfirmedSMA7'] = merged_df.new_cases.rolling(7).mean()
 
+## App title, keywords and tracking tag (optional).
+app.index_string = """<!DOCTYPE html>
+<html>
+    <head>
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-161733256-2"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'UA-161733256-2');
+        </script>
+        <meta name="keywords" content="COVID-19,Coronavirus,Dash,Python,Dashboard,Cases,Statistics,tud">
+        <title>COVID-19 TracKer by Tu Duong</title>
+        {%favicon%}
+        {%css%}
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+       </footer>
+    </body>
+</html>"""
+
+
 app.layout = html.Div(style={'marginLeft': 200, 'marginRight': 200}, children=[
     html.H3(
         'COVID-19 TracKer',
