@@ -8,13 +8,22 @@ import plotly.graph_objects as go
 import datetime
 import dash_table
 
-from DataSource import *
-
+from flask_caching   import Cache
+from DataSource      import *
 from plotly.subplots import make_subplots
+
+CACHE_TIMEOUT = 43200 # seconds = 12 hour
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+
+cache = Cache(app.server, config={
+    'CACHE_TYPE': 'filesystem',
+    'CACHE_DIR': '.cache'
+})
+
+app.config.suppress_callback_exceptions = True
 
 # get data from multiple data sources
 owid_us_data = OurWorldInData().get_US_data()
@@ -32,6 +41,78 @@ merged_df = merged_df.fillna(0)
 # generate 'positive_rate' column
 merged_df['positive_rate']       = merged_df.apply(lambda row: (row.new_cases / row.totalTestResultsIncrease) * 100 if row.totalTestResultsIncrease else 0, axis = 1)
 merged_df['NewNewConfirmedSMA7'] = merged_df.new_cases.rolling(7).mean()
+
+def serve_layout():
+    layout = html.Div(
+        style={'marginLeft': 200, 'marginRight': 200}, 
+        children=[
+            html.H3(
+                'COVID-19 TracKer',
+                style={
+                    'textAlign': 'left',
+                    'color': '#636efa',
+                    'family':"Courier New, monospace"
+                }),
+
+            html.Div([
+                html.P(children=[html.Strong('Coronavirus Disease 2019 (COVID-19)'), html.Span(' is a disease that was first identified in Wuhan, \
+                China, and later spread throughout the world. This project has 2 main purposes:')]),
+                html.Div(style={'marginLeft': 50}, children=[
+                    html.Li('Collect and publish the data required to understand the COVID-19 outbreak in the United States'),
+                    html.Li('For me to learn Dash, Plotly, Docker & several AWS Services')]),
+                html.P(html.I('Any questions or suggestions, please contact me at tduongcs [at] gmail [dot] com'))
+            ]),
+            html.Br(),
+
+            html.Div(
+                dcc.Checklist(
+                    id='overall-plot-checkboxes',
+                    options=[
+                        {'label': 'New Cases', 'value': 'NewCases'},
+                        {'label': '7-Days Moving Average', 'value': 'SevenDay'},
+                        {'label': 'Number of Tests', 'value': 'TestNumbers'},
+                        {'label': 'Positive Rate', 'value': 'PositiveRate', 'disabled':True}
+                    ],
+                    value=['NewCases', 'SevenDay'],
+                    labelStyle={'display': 'inline-block', 'cursor': 'pointer', 'margin-left':'25px'},
+                    style={'border':'1px solid', 'padding': '0.4em'}),
+                style={'text-align': 'center', 'padding': '1em'}
+            ),
+            
+            html.Div([dcc.Graph(id="overall_plot", config={ 'displayModeBar': False })]),
+            html.Br(),
+            html.Div([
+
+                html.Div([
+                        html.H6("""Select your State""",
+                                style={'margin-right': '2em'})]
+                ),
+
+                html.Div([
+                    dcc.Dropdown(
+                        id='state-dropdown',
+                        options=[{'label':name, 'value':name} for name in jh_data['Province/State'].unique()],
+                        style=dict(
+                                    width='50%',
+                                    verticalAlign="middle"
+                                )
+                    )]),
+                    html.Div([dcc.Graph(
+                                        id="state_new_case_plot",
+                                        config={ 'displayModeBar': False })
+                    ]),
+                ]),
+
+            html.Br(),
+
+            html.Div(
+                'Copyright © 2020 Tu Duong. All Rights Reserved',
+                style={
+                    'textAlign': 'center'
+                })
+        ]
+    )
+    return layout
 
 ## App title, keywords and tracking tag (optional).
 app.index_string = """<!DOCTYPE html>
@@ -60,80 +141,13 @@ app.index_string = """<!DOCTYPE html>
     </body>
 </html>"""
 
-
-app.layout = html.Div(style={'marginLeft': 200, 'marginRight': 200}, children=[
-    html.H3(
-        'COVID-19 TracKer',
-        style={
-            'textAlign': 'left',
-            'color': '#636efa',
-            'family':"Courier New, monospace"
-        }),
-
-    html.Div([
-        html.P(children=[html.Strong('Coronavirus Disease 2019 (COVID-19)'), html.Span(' is a disease that was first identified in Wuhan, \
-        China, and later spread throughout the world. This project has 2 main purposes:')]),
-        html.Div(style={'marginLeft': 50}, children=[
-            html.Li('Collect and publish the data required to understand the COVID-19 outbreak in the United States'),
-            html.Li('For me to learn Dash, Plotly, Docker & several AWS Services')]),
-        html.P(html.I('Any questions or suggestions, please contact me at tduongcs [at] gmail [dot] com'))
-    ]),
-    html.Br(),
-
-    html.Div(
-        dcc.Checklist(
-            id='overall-plot-checkboxes',
-            options=[
-                {'label': 'New Cases', 'value': 'NewCases'},
-                {'label': '7-Days Moving Average', 'value': 'SevenDay'},
-                {'label': 'Number of Tests', 'value': 'TestNumbers'},
-                {'label': 'Positive Rate', 'value': 'PositiveRate', 'disabled':True}
-            ],
-            value=['NewCases', 'SevenDay'],
-            labelStyle={'display': 'inline-block', 'cursor': 'pointer', 'margin-left':'25px'},
-            style={'border':'1px solid', 'padding': '0.4em'}),
-        style={'text-align': 'center', 'padding': '1em'}
-    ),
-    
-    html.Div([dcc.Graph(id="overall_plot", config={ 'displayModeBar': False })]),
-    html.Br(),
-    html.Div([
-
-        html.Div([
-                html.H6("""Select your State""",
-                        style={'margin-right': '2em'})]
-        ),
-
-        html.Div([
-            dcc.Dropdown(
-                id='state-dropdown',
-                options=[{'label':name, 'value':name} for name in jh_data['Province/State'].unique()],
-                style=dict(
-                            width='50%',
-                            verticalAlign="middle"
-                        )
-            )]),
-            html.Div([dcc.Graph(
-                                id="state_new_case_plot",
-                                config={ 'displayModeBar': False })
-            ]),
-        ]),
-
-    html.Br(),
-
-    html.Div(
-        'Copyright © 2020 Tu Duong. All Rights Reserved',
-        style={
-            'textAlign': 'center'
-        })
-
-])
-
+app.layout = serve_layout
 
 @app.callback(
     dash.dependencies.Output('overall_plot', 'figure'),
     [dash.dependencies.Input('overall-plot-checkboxes', 'value')]
 )
+@cache.memoize(timeout=CACHE_TIMEOUT)
 def update_output_div(input_value):
 
     fig = make_subplots(specs=[[{'secondary_y': True}]])
@@ -191,6 +205,7 @@ def update_output_div(input_value):
     dash.dependencies.Output('state_new_case_plot', 'figure'),
     [dash.dependencies.Input('state-dropdown', 'value')]
 )
+@cache.memoize(timeout=CACHE_TIMEOUT)
 def update_output_div(input_value):
 
     data                        = jh_data[ jh_data[ 'Province/State'] == input_value ].copy()
