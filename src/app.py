@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
 import dash
-import math
 import dash_core_components as dcc
 import dash_html_components as html
 import pandas               as pd
 import plotly.graph_objects as go
 
-import datetime
-import dash_table
-
 from flask_caching   import Cache
-from DataSource      import *
 from plotly.subplots import make_subplots
+
+import utils
+from DataSource      import *
+
 
 CACHE_TIMEOUT = 43200 # seconds = 12 hour
 
@@ -30,23 +29,11 @@ app.config.suppress_callback_exceptions = True
 ds_owid   = OurWorldInData()
 ds_jh     = JohnHopkins()
 
-owid_us_data = ds_owid.get_US_data()
+owid_us_data = ds_owid.get_US_data(True)
 jh_us_data   = ds_jh.get_US_data()
 
-owid_us_data['new_cases_SMA7']         = owid_us_data.new_cases.rolling(7).mean()
-
-def calculate_positive_rate(new_case, new_test):
-
-    if new_case and new_test:
-        rate = (new_case/new_test ) * 100
-        if math.isnan(rate):
-            return ''
-
-        return rate
-    
-    return ''
-
-owid_us_data['positive_rate'] = owid_us_data.apply(lambda row: calculate_positive_rate(row.new_cases, row.new_tests), axis=1)
+owid_us_data['new_cases_SMA7'] = owid_us_data.new_cases.rolling(7).mean()
+owid_us_data['positive_rate']  = owid_us_data.apply(lambda row: utils.calculate_positive_rate(row.new_cases, row.new_tests), axis=1)
 
 
 def serve_layout():
@@ -82,7 +69,7 @@ def serve_layout():
                     ],
                     value=['NewCases', 'NewCases_SMA7'],
                     labelStyle={'display': 'inline-block', 'cursor': 'pointer', 'margin-left':'25px'},
-                    style={'border':'1px solid', 'padding': '0.4em'}),
+                    style={'border':'1px solid', 'padding': '0.4em', 'border-style': 'outset'}),
                 style={'text-align': 'center', 'padding': '1em'}
             ),
             
@@ -98,7 +85,7 @@ def serve_layout():
                 html.Div([
                     dcc.Dropdown(
                         id='state-dropdown',
-                        options=[{'label':name, 'value':name} for name in ds_jh.get_states()],
+                        options=[{'label':name, 'value':name} for name in jh_us_data.state.unique()],
                         style=dict(
                                     width='50%',
                                     verticalAlign="middle"
@@ -110,8 +97,7 @@ def serve_layout():
                     ]),
                 ]),
 
-            html.Br(),
-
+            html.Hr(),
             html.Div(
                 'Copyright © 2020 Tu Duong. All Rights Reserved',
                 style={

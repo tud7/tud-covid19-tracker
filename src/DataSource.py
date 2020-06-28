@@ -1,6 +1,4 @@
 import os
-import glob
-import subprocess
 import urllib
 import urllib.request
 import urllib.error
@@ -22,7 +20,6 @@ class DataSource(ABC):
         except:
             pass
 
-
     @staticmethod
     def read_data(url):
         '''Read data from the url into the panda dataframe'''
@@ -41,22 +38,8 @@ class DataSource(ABC):
         '''Function to get full data frame'''
         return self.df
 
-    def get_date(self, filter=None):
-        '''Function to get date series'''
-        if filter is not None:
-            return self.df[ filter ].date
-        else:
-            return self.df.date
-
-    def get_states(self, filter=None):
-        '''Function to get unique states'''
-        if filter is not None:
-            return self.df[ filter ].state.unique()
-        else:
-            return self.df.state.unique()
-
     @abstractmethod
-    def get_US_data(self):
+    def get_US_data(self, copy=False):
         '''Funtion to return United States data'''
         pass
 
@@ -64,15 +47,13 @@ class DataSource(ABC):
         pass
 
 
+'''
+Data from John Hopkins
+'''
 class JohnHopkins(DataSource):
 
     def __init__(self, url=None):
         super().__init__('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv')
-
-
-    def get_US_data(self):
-        return self.df
-
 
     def _reformat_data(self):
 
@@ -86,30 +67,41 @@ class JohnHopkins(DataSource):
         self.df = self.df.astype({'date':'datetime64[ns]', 'cum_confirmed':'Int64'}, errors='ignore') 
         self.df = self.df.groupby(['country', 'state', 'date']).agg(agg_dict).reset_index()
 
+    def get_US_data(self, copy=False):
+        return self.df
 
+
+'''
+Data from Covid Tracking Project
+'''
 class CovidTracking(DataSource):
 
     def __init__(self):
         super().__init__('https://covidtracking.com/api/v1/us/daily.csv')
 
-
     def _reformat_data(self):
-
         self.df = self.df.sort_values(by='date', ascending=True)
 
         # convert to string first since 'date' column is int64.
         # to_datetime() function won't work well with int64
         self.df['date'] = self.df['date'].astype(str)
 
-
-    def get_US_data(self):
+    def get_US_data(self, copy=False):
         return self.df
 
 
+'''
+Data from Our World In Data
+'''
 class OurWorldInData(DataSource):
 
     def __init__(self):
         super().__init__('https://covid.ourworldindata.org/data/owid-covid-data.csv')        
 
-    def get_US_data(self):
-        return self.df[ self.df['iso_code']=='USA' ]
+    def get_US_data(self, copy=False):
+        
+        us_df = self.df[ self.df['iso_code']=='USA' ]
+        if copy:
+            return us_df.copy()
+
+        return us_df
