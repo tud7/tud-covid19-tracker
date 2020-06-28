@@ -13,45 +13,54 @@ class DataSource(ABC):
 
     def __init__(self, url):
 
-        self.url = url
-        self._read_data()
+        self.df  = self.read_data(url=url)
         self._reformat_data()
-        self._unify_date()
-
-
-    def _read_data(self):
-        '''Read data from the url into the panda dataframe'''
-
-        try:
-            self.df = pd.read_csv(self.url)
-
-        except urllib.error.HTTPError as ex:
-            print('WARNING: Unable to retrieve data...')
-            print(' - INFO:', ex)
-
-
-    def _unify_date(self):
-        '''Unify 'date' column to the same data type for easy merging and plotting'''
-
+        
+        # unify 'date' column to the same data type for easy merging and plotting
         try:
             self.df['date'] = pd.to_datetime(self.df['date'])
         except:
             pass
 
 
+    @staticmethod
+    def read_data(url):
+        '''Read data from the url into the panda dataframe'''
+
+        try:
+            df = pd.read_csv(url)
+            return df
+
+        except urllib.error.HTTPError as ex:
+            print('WARNING: Unable to retrieve data...')
+            print(' - INFO:', ex)
+        
+        return None
+
     def get_full_data(self):
         '''Function to get full data frame'''
-
         return self.df
 
+    def get_date(self, filter=None):
+        '''Function to get date series'''
+        if filter is not None:
+            return self.df[ filter ].date
+        else:
+            return self.df.date
 
-    def _reformat_data(self):
-        pass
-
+    def get_states(self, filter=None):
+        '''Function to get unique states'''
+        if filter is not None:
+            return self.df[ filter ].state.unique()
+        else:
+            return self.df.state.unique()
 
     @abstractmethod
     def get_US_data(self):
         '''Funtion to return United States data'''
+        pass
+
+    def _reformat_data(self):
         pass
 
 
@@ -67,15 +76,15 @@ class JohnHopkins(DataSource):
 
     def _reformat_data(self):
 
-        id_vars=['Country', 'Province/State', 'Lat', 'Long']
-        agg_dict = { 'CumConfirmed':sum }
+        id_vars=['country', 'state', 'Lat', 'long']
+        agg_dict = { 'cum_confirmed':sum }
 
         self.df = self.df.iloc[:, 6:]
         self.df = self.df.drop('Combined_Key', axis=1) 
-        self.df = self.df.rename(columns={ 'Country_Region':'Country', 'Province_State':'Province/State', 'Long_':'Long' }) 
-        self.df = self.df.melt(id_vars=id_vars, var_name='date', value_name='CumConfirmed') 
-        self.df = self.df.astype({'date':'datetime64[ns]', 'CumConfirmed':'Int64'}, errors='ignore') 
-        self.df = self.df.groupby(['Country', 'Province/State', 'date']).agg(agg_dict).reset_index()
+        self.df = self.df.rename(columns={ 'Country_Region':'country', 'Province_State':'state', 'Long_':'long' }) 
+        self.df = self.df.melt(id_vars=id_vars, var_name='date', value_name='cum_confirmed') 
+        self.df = self.df.astype({'date':'datetime64[ns]', 'cum_confirmed':'Int64'}, errors='ignore') 
+        self.df = self.df.groupby(['country', 'state', 'date']).agg(agg_dict).reset_index()
 
 
 class CovidTracking(DataSource):
@@ -100,8 +109,7 @@ class CovidTracking(DataSource):
 class OurWorldInData(DataSource):
 
     def __init__(self):
-        super().__init__('https://covid.ourworldindata.org/data/ecdc/full_data.csv')
-
+        super().__init__('https://covid.ourworldindata.org/data/owid-covid-data.csv')        
 
     def get_US_data(self):
-        return self.df[ self.df['location']=='United States' ]
+        return self.df[ self.df['iso_code']=='USA' ]

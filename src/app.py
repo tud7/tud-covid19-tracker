@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import dash
+import math
 import dash_core_components as dcc
 import dash_html_components as html
 import pandas               as pd
@@ -26,21 +27,27 @@ cache = Cache(app.server, config={
 app.config.suppress_callback_exceptions = True
 
 # get data from multiple data sources
-owid_us_data = OurWorldInData().get_US_data()
-jh_data      = JohnHopkins().get_US_data()
-us_covid19_test_data = CovidTracking().get_full_data()
+ds_owid   = OurWorldInData()
+ds_jh     = JohnHopkins()
 
-# merge 2 panda data frames into 1 data frame
-merged_df = pd.merge(owid_us_data,
-                 us_covid19_test_data[['date', 'totalTestResultsIncrease']],
-                 on='date')
+owid_us_data = ds_owid.get_US_data()
+jh_us_data   = ds_jh.get_US_data()
 
-# replace NaN with 0
-merged_df = merged_df.fillna(0)
+owid_us_data['new_cases_SMA7']         = owid_us_data.new_cases.rolling(7).mean()
 
-# generate 'positive_rate' column
-merged_df['positive_rate']       = merged_df.apply(lambda row: (row.new_cases / row.totalTestResultsIncrease) * 100 if row.totalTestResultsIncrease else 0, axis = 1)
-merged_df['NewNewConfirmedSMA7'] = merged_df.new_cases.rolling(7).mean()
+def calculate_positive_rate(new_case, new_test):
+
+    if new_case and new_test:
+        rate = (new_case/new_test ) * 100
+        if math.isnan(rate):
+            return ''
+
+        return rate
+    
+    return ''
+
+owid_us_data['positive_rate'] = owid_us_data.apply(lambda row: calculate_positive_rate(row.new_cases, row.new_tests), axis=1)
+
 
 def serve_layout():
     layout = html.Div(
@@ -50,7 +57,7 @@ def serve_layout():
                 'COVID-19 TracKer',
                 style={
                     'textAlign': 'left',
-                    'color': '#636efa',
+                    'color': '#1d3d63',
                     'family':"Courier New, monospace"
                 }),
 
@@ -60,7 +67,7 @@ def serve_layout():
                 html.Div(style={'marginLeft': 50}, children=[
                     html.Li('Collect and publish the data required to understand the COVID-19 outbreak in the United States'),
                     html.Li('For me to learn Dash, Plotly, Docker & several AWS Services')]),
-                html.P(html.I('Any questions or suggestions, please contact me at tduongcs [at] gmail [dot] com'))
+                html.P(html.I(children=[html.Span('Any questions or suggestions, please contact me at '), html.Strong('tduongcs [at] gmail [dot] com')]))
             ]),
             html.Br(),
 
@@ -69,11 +76,11 @@ def serve_layout():
                     id='overall-plot-checkboxes',
                     options=[
                         {'label': 'New Cases', 'value': 'NewCases'},
-                        {'label': '7-Days Moving Average', 'value': 'SevenDay'},
-                        {'label': 'Number of Tests', 'value': 'TestNumbers'},
-                        {'label': 'Positive Rate', 'value': 'PositiveRate', 'disabled':True}
+                        {'label': 'New Cases Moving Average', 'value': 'NewCases_SMA7'},
+                        {'label': 'New Tests', 'value': 'NewTests'},
+                        {'label': 'Positive Rate', 'value': 'PositiveRate'}
                     ],
-                    value=['NewCases', 'SevenDay'],
+                    value=['NewCases', 'NewCases_SMA7'],
                     labelStyle={'display': 'inline-block', 'cursor': 'pointer', 'margin-left':'25px'},
                     style={'border':'1px solid', 'padding': '0.4em'}),
                 style={'text-align': 'center', 'padding': '1em'}
@@ -91,7 +98,7 @@ def serve_layout():
                 html.Div([
                     dcc.Dropdown(
                         id='state-dropdown',
-                        options=[{'label':name, 'value':name} for name in jh_data['Province/State'].unique()],
+                        options=[{'label':name, 'value':name} for name in ds_jh.get_states()],
                         style=dict(
                                     width='50%',
                                     verticalAlign="middle"
@@ -147,42 +154,40 @@ app.layout = serve_layout
     dash.dependencies.Output('overall_plot', 'figure'),
     [dash.dependencies.Input('overall-plot-checkboxes', 'value')]
 )
-@cache.memoize(timeout=CACHE_TIMEOUT)
-def update_output_div(input_value):
+def update_overall_plot(input_value):
 
     fig = make_subplots(specs=[[{'secondary_y': True}]])
-
-    if 'TestNumbers' in input_value:
-        fig.add_trace(go.Bar(name='US Daily Tests',
-                        x=merged_df.date,
-                        y=merged_df.totalTestResultsIncrease,
-                        marker_color='darkblue',
-                        opacity=0.3))
-
+    
     if 'NewCases' in input_value:
-        fig.add_trace(go.Bar(name='US Daily New Cases',
-                        x=merged_df.date,
-                        y=merged_df.new_cases,
+        fig.add_trace(go.Bar(name='Daily New Cases',
+                        x=owid_us_data.date,
+                        y=owid_us_data.new_cases,
                         marker_color='darkblue'))
 
-    if 'SevenDay' in input_value:
+    if 'NewCases_SMA7' in input_value:
         fig.add_trace(go.Scatter(
-                    x=merged_df.date, 
-                    y=merged_df.NewNewConfirmedSMA7,
+                    x=owid_us_data.date, 
+                    y=owid_us_data.new_cases_SMA7,
                     mode='lines', line=dict(
                         width=3, color='rgb(100,140,240)'
                     ),
-                    name='7-Days Moving Average'))
+                    name='7 days Moving Average'))
+    
+    if 'NewTests' in input_value:
+        fig.add_trace(go.Bar(name='Daily New Tests',
+                        x=owid_us_data.date,
+                        y=owid_us_data.new_tests,
+                        marker_color='darkblue',
+                        opacity=0.3))
 
     if 'PositiveRate' in input_value:
         fig.add_trace(go.Scatter(name='Positive Rate',
-                            x=merged_df.date,
-                            y=merged_df.positive_rate,
+                            x=owid_us_data.date,
+                            y=owid_us_data.positive_rate,
                             opacity=0.8,
                             marker_color='rgb(255, 127, 14)'),
                     secondary_y="True")
-        fig.update_layout(yaxis2_range=[0, merged_df.positive_rate.max()+15])
-
+    
     fig.update_layout(
         title={
             'text': "COVID-19 Daily Numbers in United States"
@@ -205,33 +210,32 @@ def update_output_div(input_value):
     dash.dependencies.Output('state_new_case_plot', 'figure'),
     [dash.dependencies.Input('state-dropdown', 'value')]
 )
-@cache.memoize(timeout=CACHE_TIMEOUT)
 def update_output_div(input_value):
 
-    data                        = jh_data[ jh_data[ 'Province/State'] == input_value ].copy()
-    data['NewConfirmed']        = data.CumConfirmed.diff().fillna(0)
-    data['NewNewConfirmedSMA7'] = data.NewConfirmed.rolling(7).mean()
+    data                   = jh_us_data[ jh_us_data.state == input_value ].copy()
+    data['new_cases']      = data.cum_confirmed.diff().fillna(0)
+    data['new_cases_SMA7'] = data.new_cases.rolling(7).mean()
 
     fig = go.Figure( [go.Bar(
                             x=data.date, 
-                            y=data.NewConfirmed, 
+                            y=data.new_cases, 
                             marker_color='darkblue',
                             name='New Cases')])
 
     fig.add_trace(
                 go.Scatter(
-                    x=data.date, y=data.NewNewConfirmedSMA7,
+                    x=data.date, y=data.new_cases_SMA7,
                     mode='lines', line=dict(
                         width=3, color='rgb(100,140,240)'
                     ),
-                    name='7-Days Moving Average'
+                    name='7 days Moving Average'
                 )
     )
 
-    if input_value is None:
-        title = "COVID-19 Daily New Cases"
-    else:
-        title = "COVID-19 Daily New Cases in %s" %input_value
+    title = "COVID-19 Daily New Cases"
+
+    if input_value is not None:
+        title = title + " in " + input_value
 
     fig.update_layout(
             title={'text': title},
