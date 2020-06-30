@@ -158,6 +158,7 @@ def update_overall_plot(input_value):
                         width=3, color='rgb(100,140,240)'
                     ),
                     name='7 days Moving Average'))
+        fig.update_yaxes(rangemode='nonnegative')
     
     if 'NewTests' in input_value:
         fig.add_trace(go.Bar(name='Daily New Tests',
@@ -173,11 +174,10 @@ def update_overall_plot(input_value):
                             opacity=0.8,
                             marker_color='rgb(255, 127, 14)'),
                     secondary_y="True")
+        fig.update_yaxes(rangemode='nonnegative')
     
     fig.update_layout(
-        title={
-            'text': "COVID-19 Daily Numbers in United States"
-        },
+        title={'text': "COVID-19 Daily Numbers in United States"},
         barmode='overlay',
         plot_bgcolor='rgb(245,245,245)',
         legend=dict(
@@ -210,13 +210,17 @@ def update_output_div(input_value):
 
     fig.add_trace(
                 go.Scatter(
-                    x=data.date, y=data.new_cases_SMA7,
-                    mode='lines', line=dict(
-                        width=3, color='rgb(100,140,240)'
+                    x=data.date, 
+                    y=data.new_cases_SMA7,
+                    mode='lines', 
+                    line=dict(
+                        width=3, 
+                        color='rgb(100,140,240)'
                     ),
                     name='7 days Moving Average'
                 )
     )
+    fig.update_yaxes(rangemode='nonnegative')
 
     title = "COVID-19 Daily New Cases"
 
