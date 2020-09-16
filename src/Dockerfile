@@ -1,8 +1,8 @@
 FROM python:3.7
 LABEL maintainer "Tu Duong <tduongcs@gmail.com>"
+COPY ./ /code
 WORKDIR /code
-COPY requirements.txt /
-RUN pip install -r /requirements.txt
-COPY ./ ./
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r ./requirements.txt
 EXPOSE 8050
-CMD ["python", "./app.py"]
+ENTRYPOINT ["python", "./app.py"]

@@ -18,7 +18,7 @@ class DataSource(ABC):
         try:
             self.df['date'] = pd.to_datetime(self.df['date'])
         except:
-            pass
+            pass     
 
     @staticmethod
     def read_data(url):
@@ -46,6 +46,10 @@ class DataSource(ABC):
     def _reformat_data(self):
         pass
 
+    def _to_pickle(self, filename):
+        filename = '%s.pkl' %filename
+        self.df.to_pickle(filename)
+
 
 '''
 Data from John Hopkins
@@ -54,6 +58,7 @@ class JohnHopkins(DataSource):
 
     def __init__(self, url=None):
         super().__init__('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv')
+        self._to_pickle(self.__class__.__name__)
 
     def _reformat_data(self):
 
@@ -78,6 +83,7 @@ class CovidTracking(DataSource):
 
     def __init__(self):
         super().__init__('https://covidtracking.com/api/v1/us/daily.csv')
+        self._to_pickle(self.__class__.__name__)
 
     def _reformat_data(self):
         self.df = self.df.sort_values(by='date', ascending=True)
@@ -96,7 +102,8 @@ Data from Our World In Data
 class OurWorldInData(DataSource):
 
     def __init__(self):
-        super().__init__('https://covid.ourworldindata.org/data/owid-covid-data.csv')        
+        super().__init__('https://covid.ourworldindata.org/data/owid-covid-data.csv')
+        self._to_pickle(self.__class__.__name__)        
 
     def get_US_data(self, copy=False):
         

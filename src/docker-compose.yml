@@ -3,10 +3,17 @@ services:
   tud-covid19-tracker:
     build:
       context: .
-    image: tud-covid19-tracker:$VERSION
+    image: tud-covid19-tracker
     container_name: tud-covid19-tracker
     ports:
       - "80:8050"
-    environment:
-      - TARGET=$TARGET
+    networks:
+      - tud-net
     restart: unless-stopped
+  redis:
+    image: "redis:alpine"
+    networks:
+      tud-net:
+
+networks:
+  tud-net:
