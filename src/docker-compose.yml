@@ -1,9 +1,7 @@
 version: "3.7"
 services:
   tud-covid19-tracker:
-    build:
-      context: .
-    image: tud-covid19-tracker
+    image: tud7/tud-covid19-tracker:latest
     container_name: tud-covid19-tracker
     ports:
       - "80:8050"
