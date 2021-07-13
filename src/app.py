@@ -8,18 +8,13 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 import utils
-import redis
 
 from DataSource      import *
-
-CACHE_TIMEOUT = 43200 # seconds = 12 hour
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.config.suppress_callback_exceptions = True
-
-cache = redis.Redis(host='redis', port=6379)
 
 # get data from multiple data sources
 ds_owid   = OurWorldInData()
@@ -32,22 +27,8 @@ owid_us_data['new_cases_SMA7'] = owid_us_data.new_cases.rolling(7).mean()
 owid_us_data['positive_rate']  = owid_us_data.apply(lambda row: utils.calculate_positive_rate(row.new_cases, row.new_tests), axis=1)
 
 
-def get_hit_count():
-    retries = 5
-    while True:
-        try:
-            return cache.incr('hits')
-        except redis.exceptions.ConnectionError as exc:
-            if retries == 0:
-                raise exc
-            retries -= 1
-            time.sleep(0.5)
-
-
 def serve_layout():
     
-    count = get_hit_count()
-
     layout = html.Div(
         style={'marginLeft': 200, 'marginRight': 200}, 
         children=[
@@ -106,8 +87,7 @@ def serve_layout():
                                         config={ 'displayModeBar': False })
                     ]),
             ]),
-
-            html.Div(html.I('This page has been visited {} times!'.format(count)), style={'textAlign': 'right', 'padding': '25px 0px 0px 0px'}),
+            
             html.Hr(),
             html.Footer('Copyright © 2020 Tu Duong. All Rights Reserved',  style={'textAlign': 'center'}),
             html.Br()
